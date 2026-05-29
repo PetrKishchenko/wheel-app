@@ -24,7 +24,7 @@
         }
         .app { width: 100%; max-width: 420px; text-align: center; }
         h1 { color: white; font-size: 28px; margin-bottom: 5px; }
-        .subtitle { color: #aaa; font-size: 14px; margin-bottom: 25px; }
+        .subtitle { color: #aaa; font-size: 14px; margin-bottom: 20px; }
         .wheel-container { position: relative; margin: 0 auto 30px; width: 320px; height: 320px; }
         .pointer {
             position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
@@ -48,10 +48,6 @@
         }
         .btn-spin:active { transform: scale(0.96); }
         .btn-spin:disabled { background: #555; box-shadow: none; cursor: not-allowed; }
-        .btn-options {
-            background: transparent; color: white; border: 2px solid #555;
-            font-size: 14px; padding: 12px;
-        }
         .btn-ad {
             background: transparent; color: #ffd700; border: 2px solid #ffd700;
             font-size: 14px; padding: 12px;
@@ -77,6 +73,8 @@
     <h1>🎯 Колесо Решений</h1>
     <p class="subtitle">Не можешь выбрать? Доверься судьбе!</p>
     
+    <button class="btn btn-spin" onclick="updateOptions()">⚙️ Настроить колесо</button>
+    
     <div class="wheel-container">
         <div class="pointer"></div>
         <canvas id="wheel" width="640" height="640"></canvas>
@@ -85,7 +83,6 @@
     <p class="counter" id="spinCounter">Бесплатных вращений: <strong>5</strong></p>
     
     <button class="btn btn-spin" id="btnSpin" onclick="spin()">🎰 КРУТИТЬ!</button>
-    <button class="btn btn-options" onclick="updateOptions()">⚙️ Настроить колесо</button>
     <button class="btn btn-ad" id="btnAd" onclick="watchAd()">📺 +3 вращения (посмотреть рекламу)</button>
     
     <div class="result" id="result"></div>
@@ -229,7 +226,7 @@
     function spin() {
         if (spinning) return;
         if (options.length < 2) {
-            alert('Добавь хотя бы 2 варианта! Тапни по колесу, чтобы изменить.');
+            alert('Добавь хотя бы 2 варианта! Сначала настрой колесо.');
             return;
         }
         
