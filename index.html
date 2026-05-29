@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Колесо Решений</title>
+    
+    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22%D0%9A%D0%BE%D0%BB%D0%B5%D1%81%D0%BE%20%D0%A0%D0%B5%D1%88%D0%B5%D0%BD%D0%B8%D0%B9%22%2C%22short_name%22%3A%22%D0%9A%D0%BE%D0%BB%D0%B5%D1%81%D0%BE%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%231a1a2e%22%2C%22theme_color%22%3A%22%23e94560%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Ccircle%20cx%3D'50'%20cy%3D'50'%20r%3D'45'%20fill%3D'%23e94560'%2F%3E%3Ctext%20x%3D'50'%20y%3D'65'%20text-anchor%3D'middle'%20fill%3D'white'%20font-size%3D'40'%3E%F0%9F%8E%AF%3C%2Ftext%3E%3C%2Fsvg%3E%22%2C%22sizes%22%3A%22100x100%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+    <meta name="theme-color" content="#e94560">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Колесо">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; padding: 20px; overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none; -webkit-user-select: none;
+        }
+        .app { width: 100%; max-width: 420px; text-align: center; }
+        h1 { color: white; font-size: 28px; margin-bottom: 5px; }
+        .subtitle { color: #aaa; font-size: 14px; margin-bottom: 25px; }
+        .wheel-container { position: relative; margin: 0 auto 30px; width: 320px; height: 320px; }
+        .pointer {
+            position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0;
+            border-left: 18px solid transparent; border-right: 18px solid transparent;
+            border-top: 30px solid #e94560; z-index: 10;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+        }
+        canvas {
+            width: 320px; height: 320px; border-radius: 50%;
+            box-shadow: 0 0 30px rgba(233,69,96,0.3), 0 0 0 8px #16213e;
+        }
+        .btn {
+            width: 100%; padding: 16px; border: none; border-radius: 12px;
+            font-size: 18px; font-weight: bold; cursor: pointer;
+            margin-bottom: 10px; font-family: inherit;
+        }
+        .btn-spin {
+            background: #e94560; color: white; font-size: 20px;
+            box-shadow: 0 6px 20px rgba(233,69,96,0.4);
+        }
+        .btn-spin:active { transform: scale(0.96); }
+        .btn-spin:disabled { background: #555; box-shadow: none; cursor: not-allowed; }
+        .btn-ad {
+            background: transparent; color: #ffd700; border: 2px solid #ffd700;
+            font-size: 14px; padding: 12px;
+        }
+        .result { 
+            margin-top: 20px; 
+            color: white; 
+            font-size: 20px; 
+            font-weight: bold; 
+            min-height: auto;
+            line-height: 1.6;
+        }
+        .result span { padding: 8px 0px; }
+        .counter { color: #aaa; font-size: 13px; margin-bottom: 8px; }
+        .history-title { color: #aaa; font-size: 14px; margin-top: 25px; text-align: left; cursor: pointer; }
+        .history-list { text-align: left; color: #ccc; font-size: 14px; max-height: 150px; overflow-y: auto; margin-top: 5px; }
+        .history-item { padding: 6px 0; border-bottom: 1px solid #16213e; }
+    </style>
+</head>
+<body>
+
+<div class="app">
+    <h1>🎯 Колесо Решений</h1>
+    <p class="subtitle">Не можешь выбрать? Доверься судьбе!</p>
+    
+    <div class="wheel-container">
+        <div class="pointer"></div>
+        <canvas id="wheel" width="640" height="640"></canvas>
+    </div>
+    
+    <p class="counter" id="spinCounter">Бесплатных вращений: <strong>5</strong></p>
+    
+    <button class="btn btn-spin" id="btnSpin" onclick="spin()">🎰 КРУТИТЬ!</button>
+    <button class="btn btn-ad" id="btnAd" onclick="watchAd()">📺 +3 вращения (посмотреть рекламу)</button>
+    
+    <div class="result" id="result"></div>
+    
+    <details class="history-title">
+        <summary>📜 История решений</summary>
+        <div class="history-list" id="history"></div>
+    </details>
+</div>
+
+<script>
+    const canvas = document.getElementById('wheel');
+    const ctx = canvas.getContext('2d');
+    
+    let options = ['Пицца', 'Суши', 'Бургеры', 'Салат', 'Шаверма', 'Домашнее'];
+    let freeSpins = 5;
+    let history = [];
+    let currentAngle = 0;
+    let spinning = false;
+    
+    const colors = [
+        '#e94560', '#0f3460', '#ffd700', '#533483', 
+        '#00b894', '#e17055', '#6c5ce7', '#fd79a8',
+        '#2ed573', '#1e90ff', '#ff6348', '#7bed9f'
+    ];
+    
+    function drawWheel() {
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        const radius = 280;
+        const numOptions = options.length;
+        const arcSize = (2 * Math.PI) / numOptions;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        for (let i = 0; i < numOptions; i++) {
+            const startAngle = i * arcSize + currentAngle;
+            const endAngle = startAngle + arcSize;
+            
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.arc(cx, cy, radius, startAngle, endAngle);
+            ctx.closePath();
+            ctx.fillStyle = colors[i % colors.length];
+            ctx.fill();
+            
+            ctx.strokeStyle = '#1a1a2e';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(startAngle + arcSize / 2);
+            ctx.textAlign = 'right';
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 22px -apple-system, sans-serif';
+            const text = options[i].length > 12 ? options[i].substring(0, 11) + '…' : options[i];
+            ctx.fillText(text, radius - 25, 8);
+            ctx.restore();
+        }
+        
+        ctx.beginPath();
+        ctx.arc(cx, cy, 40, 0, 2 * Math.PI);
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fill();
+        ctx.strokeStyle = '#e94560';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+    }
+    
+    function updateOptions() {
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            padding: 20px;
+        `;
+        
+        modal.innerHTML = `
+            <div style="background: #16213e; padding: 20px; border-radius: 16px; width: 100%; max-width: 400px;">
+                <h3 style="color: white; margin-top: 0;">Введи варианты</h3>
+                <p style="color: #aaa; font-size: 14px;">Каждый вариант с новой строки (минимум 2)</p>
+                <textarea id="optionsInput" style="
+                    width: 100%; height: 150px; padding: 12px; border-radius: 12px;
+                    border: 2px solid #0f3460; background: #0f3460; color: white;
+                    font-size: 16px; resize: vertical; font-family: inherit;
+                    box-sizing: border-box;
+                ">${options.join('\n')}</textarea>
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button id="btnCancel" style="
+                        flex: 1; padding: 14px; border: 2px solid #555; background: transparent;
+                        color: white; border-radius: 12px; font-size: 16px; cursor: pointer;
+                    ">Отмена</button>
+                    <button id="btnSave" style="
+                        flex: 1; padding: 14px; border: none; background: #e94560;
+                        color: white; border-radius: 12px; font-size: 16px; cursor: pointer;
+                    ">Сохранить</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        const textarea = document.getElementById('optionsInput');
+        textarea.focus();
+        
+        document.getElementById('btnCancel').onclick = () => {
+            document.body.removeChild(modal);
+        };
+        
+        document.getElementById('btnSave').onclick = () => {
+            const input = textarea.value;
+            if (input && input.trim()) {
+                const newOptions = input.split('\n').filter(o => o.trim());
+                if (newOptions.length < 2) {
+                    alert('Нужно минимум 2 варианта!');
+                } else {
+                    options = newOptions;
+                    currentAngle = 0;
+                    drawWheel();
+                    document.getElementById('result').innerHTML = '';
+                    document.body.removeChild(modal);
+                }
+            }
+        };
+        
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                document.body.removeChild(modal);
+            }
+        });
+        
+        textarea.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                document.getElementById('btnSave').click();
+            }
+        });
+    }
+    
+    function spin() {
+        if (spinning) return;
+        if (options.length < 2) {
+            alert('Добавь хотя бы 2 варианта! Тапни по колесу, чтобы изменить.');
+            return;
+        }
+        
+        if (freeSpins <= 0) {
+            const resultDiv = document.getElementById('result');
+            if (!resultDiv.innerHTML.includes('Кончились вращения')) {
+                resultDiv.innerHTML = '<span>🔒 Кончились вращения! Посмотри рекламу или купи безлимит.</span>';
+            }
+            return;
+        }
+        
+        spinning = true;
+        freeSpins--;
+        updateUI();
+        
+        const numOptions = options.length;
+        const winningSector = Math.floor(Math.random() * numOptions);
+        const arcSize = (2 * Math.PI) / numOptions;
+        
+        const sectorCenter = winningSector * arcSize + arcSize / 2;
+        const targetAngle = (-Math.PI / 2) - sectorCenter;
+        
+        const fullSpins = 5 + Math.floor(Math.random() * 5);
+        const finalTarget = targetAngle - (fullSpins * 2 * Math.PI);
+        
+        let adjustedTarget = finalTarget;
+        while (adjustedTarget > currentAngle) {
+            adjustedTarget -= 2 * Math.PI;
+        }
+        
+        const startAngle = currentAngle;
+        const duration = 3000 + Math.random() * 2000;
+        const startTime = performance.now();
+        
+        function animate(now) {
+            const elapsed = now - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            
+            currentAngle = startAngle + (adjustedTarget - startAngle) * eased;
+            drawWheel();
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                currentAngle = adjustedTarget;
+                spinning = false;
+                
+                const winner = options[winningSector];
+                document.getElementById('result').innerHTML = 
+                    `<span>🎉 Выпало: <strong>${winner}</strong>!</span>`;
+                
+                history.unshift({ option: winner, time: new Date().toLocaleTimeString() });
+                if (history.length > 50) history.pop();
+                updateHistory();
+                
+                createConfetti();
+                updateUI();
+            }
+        }
+        
+        requestAnimationFrame(animate);
+    }
+    
+    function watchAd() {
+        const btnAd = document.getElementById('btnAd');
+        const resultDiv = document.getElementById('result');
+        
+        if (btnAd.disabled) return;
+        
+        resultDiv.innerHTML = '<span>📺 Показываем рекламу... (3 сек)</span>';
+        btnAd.disabled = true;
+        btnAd.textContent = '📺 Загружаем рекламу...';
+        
+        setTimeout(() => {
+            freeSpins += 3;
+            resultDiv.innerHTML = '<span>✅ +3 вращения! Можешь крутить дальше.</span>';
+            btnAd.disabled = false;
+            btnAd.textContent = '📺 +3 вращения (посмотреть рекламу)';
+            updateUI();
+        }, 3000);
+    }
+    
+    function createConfetti() {
+        const confettiColors = ['#e94560', '#ffd700', '#00b894', '#1e90ff', '#ff6348'];
+        for (let i = 0; i < 50; i++) {
+            setTimeout(() => {
+                const confetti = document.createElement('div');
+                confetti.style.cssText = `
+                    position: fixed; top: -10px; left: ${Math.random() * 100}%;
+                    width: 10px; height: 10px;
+                    background: ${confettiColors[Math.floor(Math.random() * confettiColors.length)]};
+                    border-radius: ${Math.random() > 0.5 ? '50%' : '0'};
+                    pointer-events: none; z-index: 9999;
+                    animation: fall ${1 + Math.random() * 2}s linear forwards;
+                `;
+                document.body.appendChild(confetti);
+                setTimeout(() => confetti.remove(), 3000);
+            }, i * 20);
+        }
+    }
+    
+    const confettiStyle = document.createElement('style');
+    confettiStyle.textContent = `
+        @keyframes fall {
+            to { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(confettiStyle);
+    
+    function updateUI() {
+        document.getElementById('spinCounter').innerHTML = 
+            `Бесплатных вращений: <strong>${freeSpins}</strong>`;
+        document.getElementById('btnSpin').disabled = spinning;
+    }
+    
+    function updateHistory() {
+        const historyDiv = document.getElementById('history');
+        historyDiv.innerHTML = history.map(h => 
+            `<div class="history-item">🎯 ${h.option} <span style="color:#666;float:right">${h.time}</span></div>`
+        ).join('');
+    }
+    
+    function init() {
+        drawWheel();
+        updateUI();
+        
+        canvas.addEventListener('click', () => {
+            if (!spinning) updateOptions();
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && !spinning) {
+                e.preventDefault();
+                spin();
+            }
+        });
+        
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+                self.addEventListener('install', e => self.skipWaiting());
+                self.addEventListener('activate', e => clients.claim());
+                self.addEventListener('fetch', e => {
+                    e.respondWith(
+                        caches.match(e.request).then(r => r || fetch(e.request))
+                    );
+                });
+            `;
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            const swUrl = URL.createObjectURL(blob);
+            navigator.serviceWorker.register(swUrl).catch(() => {});
+        }
+    }
+    
+    init();
+</script>
+
+</body>
+</html>
