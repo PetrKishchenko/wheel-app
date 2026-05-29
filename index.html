@@ -48,6 +48,10 @@
         }
         .btn-spin:active { transform: scale(0.96); }
         .btn-spin:disabled { background: #555; box-shadow: none; cursor: not-allowed; }
+        .btn-options {
+            background: transparent; color: white; border: 2px solid #555;
+            font-size: 14px; padding: 12px;
+        }
         .btn-ad {
             background: transparent; color: #ffd700; border: 2px solid #ffd700;
             font-size: 14px; padding: 12px;
@@ -81,6 +85,7 @@
     <p class="counter" id="spinCounter">Бесплатных вращений: <strong>5</strong></p>
     
     <button class="btn btn-spin" id="btnSpin" onclick="spin()">🎰 КРУТИТЬ!</button>
+    <button class="btn btn-options" onclick="updateOptions()">⚙️ Настроить колесо</button>
     <button class="btn btn-ad" id="btnAd" onclick="watchAd()">📺 +3 вращения (посмотреть рекламу)</button>
     
     <div class="result" id="result"></div>
@@ -351,10 +356,6 @@
     function init() {
         drawWheel();
         updateUI();
-        
-        canvas.addEventListener('click', () => {
-            if (!spinning) updateOptions();
-        });
         
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space' && !spinning) {
